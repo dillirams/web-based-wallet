@@ -1,103 +1,88 @@
-import { useState } from "react";
-import axios from "axios";
 import "./App.css";
+import { useState } from "react";
+import { generateMnemonic, mnemonicToSeedSync } from "bip39";
+import { useWalletStore } from "./store/create";
+import { Sol } from "./component/sol";
+import { Eth } from "./component/eth";
 
-function App() {
-  const [mnuemonics, setMnuemonics] = useState("");
-  const [addWallet, setAddwallet] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState("");
+export default function App() {
+  const { mnuemonics, setMnuemonics, setSeed } = useWalletStore();
+  const [network, setNetwork] = useState<"sol" | "eth" | null>(null);
 
-  async function getMnuemocis() {
-    try {
-      setLoading(true);
-      const res = await axios.post("http://localhost:3000/seed");
-      setMnuemonics(res.data.mnemonic);
-    } finally {
-      setLoading(false);
-    }
-  }
+  function createWallet() {
+    const mnemonic = generateMnemonic();
+    const seed = mnemonicToSeedSync(mnemonic);
 
-  async function addWalletFn() {
-    try {
-      setLoading(true);
-      const res = await axios.post("http://localhost:3000/createwallet");
-      setAddwallet((prev) => [...prev, res.data.publicKey]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function copyToClipboard(pk) {
-    navigator.clipboard.writeText(pk);
-    setCopied(pk);
-    setTimeout(() => setCopied(""), 1500);
+    setMnuemonics(mnemonic);
+    setSeed(seed);
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-black to-indigo-800 flex justify-center items-center p-4">
-      <div className="w-full max-w-xl bg-white/10 backdrop-blur-lg rounded-xl p-6 text-white shadow-xl">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-black to-indigo-900 flex items-center justify-center p-4">
+      <div className="w-full max-w-xl bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl p-6 text-white">
         
         {/* Header */}
-        <h1 className="text-2xl font-bold text-center mb-4">
-          🚀 My First Crypto Wallet
+        <h1 className="text-2xl font-bold text-center mb-6 tracking-wide">
+          🚀 My Crypto Wallet
         </h1>
 
-        {/* Mnemonic Box */}
-        {mnuemonics && (
-          <div className="mb-4 p-4 rounded-lg bg-black/40 border border-indigo-400 text-sm break-words">
-            <p className="text-indigo-300 font-semibold mb-1">
-              Recovery Phrase
-            </p>
-            {mnuemonics}
-          </div>
-        )}
-
-        {/* Button */}
-        <button
-          onClick={!mnuemonics ? getMnuemocis : addWalletFn}
-          disabled={loading}
-          className="w-full py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 transition font-semibold disabled:opacity-50"
-        >
-          {loading
-            ? "⏳ Processing..."
-            : mnuemonics
-            ? "➕ Add Wallet"
-            : "🔐 Create Wallet"}
-        </button>
-
-        {/* Wallet List */}
-        {addWallet.length > 0 && (
-          <div className="mt-6 space-y-3">
-            <h2 className="text-lg font-semibold text-indigo-300">
-              Your Wallets
-            </h2>
-
-            {addWallet.map((pk, i) => (
-              <div
-                key={pk}
-                className="flex items-center justify-between bg-black/40 border border-indigo-700 rounded-lg p-3"
-              >
-                <div className="text-sm break-all">
-                  <span className="text-indigo-400 mr-2">
-                    #{i + 1}
-                  </span>
-                  {pk}
-                </div>
-
-                <button
-                  onClick={() => copyToClipboard(pk)}
-                  className="ml-3 px-2 py-1 text-xs rounded bg-indigo-600 hover:bg-indigo-700"
-                >
-                  {copied === pk ? "✅ Copied" : "📋 Copy"}
-                </button>
+        {!mnuemonics ? (
+          <button
+            onClick={createWallet}
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:scale-[1.02] transition-transform font-semibold shadow-lg"
+          >
+            🔐 Create Wallet
+          </button>
+        ) : (
+          <>
+            {/* Mnemonic Vault */}
+            <div className="mb-6 p-4 rounded-xl bg-black/40 border border-indigo-400 text-sm break-words shadow-inner">
+              <p className="text-indigo-300 font-semibold mb-2">
+                Recovery Phrase (keep it safe)
+              </p>
+              <div className="leading-relaxed text-white/90">
+                {mnuemonics}
               </div>
-            ))}
-          </div>
+            </div>
+
+            {/* Network Selector */}
+            <div className="flex justify-center gap-4 mb-6">
+              <button
+                onClick={() => setNetwork("sol")}
+                className={`px-4 py-2 rounded-full font-medium transition ${
+                  network === "sol"
+                    ? "bg-indigo-600 shadow-md"
+                    : "bg-white/10 hover:bg-white/20"
+                }`}
+              >
+                🟣 Solana
+              </button>
+
+              <button
+                onClick={() => setNetwork("eth")}
+                className={`px-4 py-2 rounded-full font-medium transition ${
+                  network === "eth"
+                    ? "bg-indigo-600 shadow-md"
+                    : "bg-white/10 hover:bg-white/20"
+                }`}
+              >
+                🟦 Ethereum
+              </button>
+            </div>
+
+            {/* Wallet Area */}
+            <div className="mt-4">
+              {network === "sol" && <Sol />}
+              {network === "eth" && <Eth />}
+              {!network && (
+                <p className="text-center text-white/60 text-sm">
+                  Select a network to continue
+                </p>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>
   );
 }
-
-export default App;
